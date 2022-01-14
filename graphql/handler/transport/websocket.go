@@ -6,20 +6,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/gofiber/fiber/v2"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 	"log"
-	"net/http"
 	"sync"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/errcode"
-	"github.com/gorilla/websocket"
-	"github.com/vektah/gqlparser/v2/gqlerror"
+	"github.com/gofiber/websocket/v2"
 )
 
 type (
 	Websocket struct {
-		Upgrader              websocket.Upgrader
+		Upgrader              websocket.Conn
+		Config                websocket.Config
 		InitFunc              WebsocketInitFunc
 		KeepAlivePingInterval time.Duration
 		PingPongInterval      time.Duration
@@ -45,47 +46,50 @@ type (
 
 var _ graphql.Transport = Websocket{}
 
-func (t Websocket) Supports(r *http.Request) bool {
-	return r.Header.Get("Upgrade") != ""
+func (t Websocket) Supports(ctx *fiber.Ctx) bool {
+	return ctx.GetReqHeaders()["Upgrade"] != ""
 }
 
-func (t Websocket) Do(w http.ResponseWriter, r *http.Request, exec graphql.GraphExecutor) {
+func (t Websocket) Do(ctx *fiber.Ctx, exec graphql.GraphExecutor) {
 	t.injectGraphQLWSSubprotocols()
-	ws, err := t.Upgrader.Upgrade(w, r, http.Header{})
-	if err != nil {
-		log.Printf("unable to upgrade %T to websocket %s: ", w, err.Error())
-		SendErrorf(w, http.StatusBadRequest, "unable to upgrade")
+	if websocket.IsWebSocketUpgrade(ctx) {
+		log.Printf("unable to upgrade to websocket")
+		SendErrorf(ctx, fiber.StatusBadRequest, "unable to upgrade")
 		return
 	}
 
-	var me messageExchanger
-	switch ws.Subprotocol() {
-	default:
-		msg := websocket.FormatCloseMessage(websocket.CloseProtocolError, fmt.Sprintf("unsupported negotiated subprotocol %s", ws.Subprotocol()))
-		ws.WriteMessage(websocket.CloseMessage, msg)
-		return
-	case graphqlwsSubprotocol, "":
-		// clients are required to send a subprotocol, to be backward compatible with the previous implementation we select
-		// "graphql-ws" by default
-		me = graphqlwsMessageExchanger{c: ws}
-	case graphqltransportwsSubprotocol:
-		me = graphqltransportwsMessageExchanger{c: ws}
-	}
+	fiberHandler := websocket.New(func(ws *websocket.Conn) {
+		var me messageExchanger
+		switch ws.Subprotocol() {
+		default:
+			msg := websocket.FormatCloseMessage(websocket.CloseProtocolError, fmt.Sprintf("unsupported negotiated subprotocol %s", ws.Subprotocol()))
+			ws.WriteMessage(websocket.CloseMessage, msg)
+			return
+		case graphqlwsSubprotocol, "":
+			// clients are required to send a subprotocol, to be backward compatible with the previous implementation we select
+			// "graphql-ws" by default
+			me = graphqlwsMessageExchanger{c: ws}
+		case graphqltransportwsSubprotocol:
+			me = graphqltransportwsMessageExchanger{c: ws}
+		}
 
-	conn := wsConnection{
-		active:    map[string]context.CancelFunc{},
-		conn:      ws,
-		ctx:       r.Context(),
-		exec:      exec,
-		me:        me,
-		Websocket: t,
-	}
+		conn := wsConnection{
+			active:    map[string]context.CancelFunc{},
+			conn:      ws,
+			ctx:       ctx.UserContext(),
+			exec:      exec,
+			me:        me,
+			Websocket: t,
+		}
 
-	if !conn.init() {
-		return
-	}
+		if !conn.init() {
+			return
+		}
 
-	conn.run()
+		conn.run()
+	}, t.Config)
+
+	fiberHandler(ctx)
 }
 
 func (c *wsConnection) init() bool {

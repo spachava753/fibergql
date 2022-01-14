@@ -1,8 +1,8 @@
 package playground
 
 import (
+	"github.com/gofiber/fiber/v2"
 	"html/template"
-	"net/http"
 )
 
 var page = template.Must(template.New("graphiql").Parse(`<!DOCTYPE html>
@@ -43,10 +43,10 @@ var page = template.Must(template.New("graphiql").Parse(`<!DOCTYPE html>
 </html>
 `))
 
-func Handler(title string, endpoint string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Content-Type", "text/html")
-		err := page.Execute(w, map[string]string{
+func Handler(title string, endpoint string) fiber.Handler {
+	return func(ctx *fiber.Ctx) error {
+		ctx.Set("Content-Type", "text/html")
+		return page.Execute(ctx.Response().BodyWriter(), map[string]string{
 			"title":      title,
 			"endpoint":   endpoint,
 			"version":    "1.7.26",
@@ -54,8 +54,5 @@ func Handler(title string, endpoint string) http.HandlerFunc {
 			"faviconSRI": "sha256-GhTyE+McTU79R4+pRO6ih+4TfsTOrpPwD8ReKFzb3PM=",
 			"jsSRI":      "sha256-SG9YAy4eywTcLckwij7V4oSCG3hOdV1m+2e1XuNxIgk=",
 		})
-		if err != nil {
-			panic(err)
-		}
 	}
 }

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/gorilla/websocket"
+	"github.com/gofiber/websocket/v2"
 )
 
 const (
@@ -98,8 +98,8 @@ func (t *Websocket) injectGraphQLWSSubprotocols() {
 		}()
 
 		for _, subprotocol := range supportedSubprotocols {
-			if !contains(t.Upgrader.Subprotocols, subprotocol) {
-				t.Upgrader.Subprotocols = append(t.Upgrader.Subprotocols, subprotocol)
+			if !contains(t.Config.Subprotocols, subprotocol) {
+				t.Config.Subprotocols = append(t.Config.Subprotocols, subprotocol)
 			}
 		}
 	}

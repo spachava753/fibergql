@@ -20,5 +20,11 @@ require (
 
 require (
 	github.com/agnivade/levenshtein v1.1.0 // indirect
+	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
+	github.com/gofiber/fiber/v2 v2.24.0
+	github.com/gofiber/websocket/v2 v2.0.15
+	github.com/klauspost/compress v1.14.1 // indirect
+	github.com/valyala/fasthttp v1.32.0 // indirect
+	golang.org/x/sys v0.0.0-20220111092808-5a964db01320 // indirect
 )

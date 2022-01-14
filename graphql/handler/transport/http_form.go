@@ -2,10 +2,11 @@ package transport
 
 import (
 	"encoding/json"
+	"github.com/gofiber/fiber/v2"
 	"io"
 	"io/ioutil"
 	"mime"
-	"net/http"
+	"mime/multipart"
 	"os"
 	"strings"
 
@@ -26,17 +27,17 @@ type MultipartForm struct {
 
 var _ graphql.Transport = MultipartForm{}
 
-func (f MultipartForm) Supports(r *http.Request) bool {
-	if r.Header.Get("Upgrade") != "" {
+func (f MultipartForm) Supports(ctx *fiber.Ctx) bool {
+	if ctx.GetReqHeaders()["Upgrade"] != "" {
 		return false
 	}
 
-	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	mediaType, _, err := mime.ParseMediaType(ctx.GetReqHeaders()["Content-Type"])
 	if err != nil {
 		return false
 	}
 
-	return r.Method == "POST" && mediaType == "multipart/form-data"
+	return ctx.Method() == "POST" && mediaType == "multipart/form-data"
 }
 
 func (f MultipartForm) maxUploadSize() int64 {
@@ -53,54 +54,74 @@ func (f MultipartForm) maxMemory() int64 {
 	return f.MaxMemory
 }
 
-func (f MultipartForm) Do(w http.ResponseWriter, r *http.Request, exec graphql.GraphExecutor) {
-	w.Header().Set("Content-Type", "application/json")
+func (f MultipartForm) Do(ctx *fiber.Ctx, exec graphql.GraphExecutor) {
+	ctx.Set("Content-Type", "application/json")
 
 	start := graphql.Now()
 
 	var err error
-	if r.ContentLength > f.maxUploadSize() {
-		writeJsonError(w, "failed to parse multipart form, request body too large")
+	if int64(len(ctx.Body())) > f.maxUploadSize() {
+		writeJsonError(ctx.Response().BodyWriter(), "failed to parse multipart form, request body too large")
 		return
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, f.maxUploadSize())
-	if err = r.ParseMultipartForm(f.maxMemory()); err != nil {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		if strings.Contains(err.Error(), "request body too large") {
-			writeJsonError(w, "failed to parse multipart form, request body too large")
-			return
-		}
-		writeJsonError(w, "failed to parse multipart form")
+
+	form, err := ctx.MultipartForm()
+	if err != nil {
+		ctx.Status(fiber.StatusUnprocessableEntity)
+		writeJsonError(ctx.Response().BodyWriter(), "failed to parse multipart form")
 		return
 	}
-	defer r.Body.Close()
 
 	var params graphql.RawParams
 
-	if err = jsonDecode(strings.NewReader(r.Form.Get("operations")), &params); err != nil {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		writeJsonError(w, "operations form field could not be decoded")
+	operations := form.Value["operations"]
+	if len(operations) != 1 {
+		ctx.Status(fiber.StatusUnprocessableEntity)
+		writeJsonError(ctx.Response().BodyWriter(), "operations form field could not be decoded")
+		return
+	}
+	if err = jsonDecode(strings.NewReader(operations[0]), &params); err != nil {
+		ctx.Status(fiber.StatusUnprocessableEntity)
+		writeJsonError(ctx.Response().BodyWriter(), "operations form field could not be decoded")
 		return
 	}
 
 	uploadsMap := map[string][]string{}
-	if err = json.Unmarshal([]byte(r.Form.Get("map")), &uploadsMap); err != nil {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		writeJsonError(w, "map form field could not be decoded")
+	uploadsMapFormValues := form.Value["map"]
+	if len(uploadsMapFormValues) != 1 {
+		ctx.Status(fiber.StatusUnprocessableEntity)
+		writeJsonError(ctx.Response().BodyWriter(), "map form field could not be decoded")
+		return
+	}
+	if err = json.Unmarshal([]byte(uploadsMapFormValues[0]), &uploadsMap); err != nil {
+		ctx.Status(fiber.StatusUnprocessableEntity)
+		writeJsonError(ctx.Response().BodyWriter(), "map form field could not be decoded")
 		return
 	}
 
 	var upload graphql.Upload
 	for key, paths := range uploadsMap {
 		if len(paths) == 0 {
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			writeJsonErrorf(w, "invalid empty operations paths list for key %s", key)
+			ctx.Status(fiber.StatusUnprocessableEntity)
+			writeJsonErrorf(ctx.Response().BodyWriter(), "invalid empty operations paths list for key %s", key)
 			return
 		}
-		file, header, err := r.FormFile(key)
+		files := form.File[key]
+		if len(files) != 1 {
+			ctx.Status(fiber.StatusUnprocessableEntity)
+			writeJsonErrorf(ctx.Response().BodyWriter(), "expected file header len for key %s: %d", key, len(files))
+			return
+		}
+		firstFile := files[0]
+		header := multipart.FileHeader{
+			Filename: firstFile.Filename,
+			Header:   firstFile.Header,
+			Size:     firstFile.Size,
+		}
+		file, err := firstFile.Open()
 		if err != nil {
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			writeJsonErrorf(w, "failed to get key %s from form", key)
+			ctx.Status(fiber.StatusUnprocessableEntity)
+			writeJsonErrorf(ctx.Response().BodyWriter(), "failed to open multipart file for key %s", key)
 			return
 		}
 		defer file.Close()
@@ -114,16 +135,16 @@ func (f MultipartForm) Do(w http.ResponseWriter, r *http.Request, exec graphql.G
 			}
 
 			if err := params.AddUpload(upload, key, paths[0]); err != nil {
-				w.WriteHeader(http.StatusUnprocessableEntity)
-				writeJsonGraphqlError(w, err)
+				ctx.Status(fiber.StatusUnprocessableEntity)
+				writeJsonGraphqlError(ctx.Response().BodyWriter(), err)
 				return
 			}
 		} else {
-			if r.ContentLength < f.maxMemory() {
+			if int64(len(ctx.Body())) < f.maxMemory() {
 				fileBytes, err := ioutil.ReadAll(file)
 				if err != nil {
-					w.WriteHeader(http.StatusUnprocessableEntity)
-					writeJsonErrorf(w, "failed to read file for key %s", key)
+					ctx.Status(fiber.StatusUnprocessableEntity)
+					writeJsonErrorf(ctx.Response().BodyWriter(), "failed to read file for key %s", key)
 					return
 				}
 				for _, path := range paths {
@@ -135,16 +156,16 @@ func (f MultipartForm) Do(w http.ResponseWriter, r *http.Request, exec graphql.G
 					}
 
 					if err := params.AddUpload(upload, key, path); err != nil {
-						w.WriteHeader(http.StatusUnprocessableEntity)
-						writeJsonGraphqlError(w, err)
+						ctx.Status(fiber.StatusUnprocessableEntity)
+						writeJsonGraphqlError(ctx.Response().BodyWriter(), err)
 						return
 					}
 				}
 			} else {
 				tmpFile, err := ioutil.TempFile(os.TempDir(), "gqlgen-")
 				if err != nil {
-					w.WriteHeader(http.StatusUnprocessableEntity)
-					writeJsonErrorf(w, "failed to create temp file for key %s", key)
+					ctx.Status(fiber.StatusUnprocessableEntity)
+					writeJsonErrorf(ctx.Response().BodyWriter(), "failed to create temp file for key %s", key)
 					return
 				}
 				tmpName := tmpFile.Name()
@@ -153,24 +174,24 @@ func (f MultipartForm) Do(w http.ResponseWriter, r *http.Request, exec graphql.G
 				}()
 				_, err = io.Copy(tmpFile, file)
 				if err != nil {
-					w.WriteHeader(http.StatusUnprocessableEntity)
+					ctx.Status(fiber.StatusUnprocessableEntity)
 					if err := tmpFile.Close(); err != nil {
-						writeJsonErrorf(w, "failed to copy to temp file and close temp file for key %s", key)
+						writeJsonErrorf(ctx.Response().BodyWriter(), "failed to copy to temp file and close temp file for key %s", key)
 						return
 					}
-					writeJsonErrorf(w, "failed to copy to temp file for key %s", key)
+					writeJsonErrorf(ctx.Response().BodyWriter(), "failed to copy to temp file for key %s", key)
 					return
 				}
 				if err := tmpFile.Close(); err != nil {
-					w.WriteHeader(http.StatusUnprocessableEntity)
-					writeJsonErrorf(w, "failed to close temp file for key %s", key)
+					ctx.Status(fiber.StatusUnprocessableEntity)
+					writeJsonErrorf(ctx.Response().BodyWriter(), "failed to close temp file for key %s", key)
 					return
 				}
 				for _, path := range paths {
 					pathTmpFile, err := os.Open(tmpName)
 					if err != nil {
-						w.WriteHeader(http.StatusUnprocessableEntity)
-						writeJsonErrorf(w, "failed to open temp file for key %s", key)
+						ctx.Status(fiber.StatusUnprocessableEntity)
+						writeJsonErrorf(ctx.Response().BodyWriter(), "failed to open temp file for key %s", key)
 						return
 					}
 					defer pathTmpFile.Close()
@@ -182,8 +203,8 @@ func (f MultipartForm) Do(w http.ResponseWriter, r *http.Request, exec graphql.G
 					}
 
 					if err := params.AddUpload(upload, key, path); err != nil {
-						w.WriteHeader(http.StatusUnprocessableEntity)
-						writeJsonGraphqlError(w, err)
+						ctx.Status(fiber.StatusUnprocessableEntity)
+						writeJsonGraphqlError(ctx.Response().BodyWriter(), err)
 						return
 					}
 				}
@@ -196,13 +217,13 @@ func (f MultipartForm) Do(w http.ResponseWriter, r *http.Request, exec graphql.G
 		End:   graphql.Now(),
 	}
 
-	rc, gerr := exec.CreateOperationContext(r.Context(), &params)
+	rc, gerr := exec.CreateOperationContext(ctx.UserContext(), &params)
 	if gerr != nil {
-		resp := exec.DispatchError(graphql.WithOperationContext(r.Context(), rc), gerr)
-		w.WriteHeader(statusFor(gerr))
-		writeJson(w, resp)
+		resp := exec.DispatchError(graphql.WithOperationContext(ctx.UserContext(), rc), gerr)
+		ctx.Status(statusFor(gerr))
+		writeJson(ctx.Response().BodyWriter(), resp)
 		return
 	}
-	responses, ctx := exec.DispatchOperation(r.Context(), rc)
-	writeJson(w, responses(ctx))
+	responses, userCtx := exec.DispatchOperation(ctx.UserContext(), rc)
+	writeJson(ctx.Response().BodyWriter(), responses(userCtx))
 }

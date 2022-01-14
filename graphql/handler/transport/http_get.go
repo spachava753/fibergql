@@ -2,6 +2,7 @@ package transport
 
 import (
 	"encoding/json"
+	"github.com/gofiber/fiber/v2"
 	"io"
 	"net/http"
 	"strings"
@@ -18,57 +19,57 @@ type GET struct{}
 
 var _ graphql.Transport = GET{}
 
-func (h GET) Supports(r *http.Request) bool {
-	if r.Header.Get("Upgrade") != "" {
+func (h GET) Supports(ctx *fiber.Ctx) bool {
+	if ctx.GetReqHeaders()["Upgrade"] != "" {
 		return false
 	}
 
-	return r.Method == "GET"
+	return ctx.Method() == "GET"
 }
 
-func (h GET) Do(w http.ResponseWriter, r *http.Request, exec graphql.GraphExecutor) {
-	w.Header().Set("Content-Type", "application/json")
+func (h GET) Do(ctx *fiber.Ctx, exec graphql.GraphExecutor) {
+	ctx.Set("Content-Type", "application/json")
 
 	raw := &graphql.RawParams{
-		Query:         r.URL.Query().Get("query"),
-		OperationName: r.URL.Query().Get("operationName"),
+		Query:         ctx.Query("query"),
+		OperationName: ctx.Query("operationName"),
 	}
 	raw.ReadTime.Start = graphql.Now()
 
-	if variables := r.URL.Query().Get("variables"); variables != "" {
+	if variables := ctx.Query("variables"); variables != "" {
 		if err := jsonDecode(strings.NewReader(variables), &raw.Variables); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			writeJsonError(w, "variables could not be decoded")
+			ctx.Status(fiber.StatusBadRequest)
+			writeJsonError(ctx.Response().BodyWriter(), "variables could not be decoded")
 			return
 		}
 	}
 
-	if extensions := r.URL.Query().Get("extensions"); extensions != "" {
+	if extensions := ctx.Query("extensions"); extensions != "" {
 		if err := jsonDecode(strings.NewReader(extensions), &raw.Extensions); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			writeJsonError(w, "extensions could not be decoded")
+			ctx.Status(fiber.StatusBadRequest)
+			writeJsonError(ctx.Response().BodyWriter(), "extensions could not be decoded")
 			return
 		}
 	}
 
 	raw.ReadTime.End = graphql.Now()
 
-	rc, err := exec.CreateOperationContext(r.Context(), raw)
+	rc, err := exec.CreateOperationContext(ctx.UserContext(), raw)
 	if err != nil {
-		w.WriteHeader(statusFor(err))
-		resp := exec.DispatchError(graphql.WithOperationContext(r.Context(), rc), err)
-		writeJson(w, resp)
+		ctx.Status(statusFor(err))
+		resp := exec.DispatchError(graphql.WithOperationContext(ctx.UserContext(), rc), err)
+		writeJson(ctx.Response().BodyWriter(), resp)
 		return
 	}
 	op := rc.Doc.Operations.ForName(rc.OperationName)
 	if op.Operation != ast.Query {
-		w.WriteHeader(http.StatusNotAcceptable)
-		writeJsonError(w, "GET requests only allow query operations")
+		ctx.Status(fiber.StatusNotAcceptable)
+		writeJsonError(ctx.Response().BodyWriter(), "GET requests only allow query operations")
 		return
 	}
 
-	responses, ctx := exec.DispatchOperation(r.Context(), rc)
-	writeJson(w, responses(ctx))
+	responses, userCtx := exec.DispatchOperation(ctx.UserContext(), rc)
+	writeJson(ctx.Response().BodyWriter(), responses(userCtx))
 }
 
 func jsonDecode(r io.Reader, val interface{}) error {

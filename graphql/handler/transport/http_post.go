@@ -1,10 +1,10 @@
 package transport
 
 import (
-	"mime"
-	"net/http"
-
+	"bytes"
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/gofiber/fiber/v2"
+	"mime"
 )
 
 // POST implements the POST side of the default HTTP transport
@@ -13,27 +13,27 @@ type POST struct{}
 
 var _ graphql.Transport = POST{}
 
-func (h POST) Supports(r *http.Request) bool {
-	if r.Header.Get("Upgrade") != "" {
+func (h POST) Supports(ctx *fiber.Ctx) bool {
+	if ctx.GetReqHeaders()["Upgrade"] != "" {
 		return false
 	}
 
-	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	mediaType, _, err := mime.ParseMediaType(ctx.GetReqHeaders()["Content-Type"])
 	if err != nil {
 		return false
 	}
 
-	return r.Method == "POST" && mediaType == "application/json"
+	return ctx.Method() == "POST" && mediaType == "application/json"
 }
 
-func (h POST) Do(w http.ResponseWriter, r *http.Request, exec graphql.GraphExecutor) {
-	w.Header().Set("Content-Type", "application/json")
+func (h POST) Do(ctx *fiber.Ctx, exec graphql.GraphExecutor) {
+	ctx.Set("Content-Type", "application/json")
 
 	var params *graphql.RawParams
 	start := graphql.Now()
-	if err := jsonDecode(r.Body, &params); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		writeJsonErrorf(w, "json body could not be decoded: "+err.Error())
+	if err := jsonDecode(bytes.NewReader(ctx.Body()), &params); err != nil {
+		ctx.Status(fiber.StatusBadRequest)
+		writeJsonErrorf(ctx.Response().BodyWriter(), "json body could not be decoded: "+err.Error())
 		return
 	}
 	params.ReadTime = graphql.TraceTiming{
@@ -41,13 +41,13 @@ func (h POST) Do(w http.ResponseWriter, r *http.Request, exec graphql.GraphExecu
 		End:   graphql.Now(),
 	}
 
-	rc, err := exec.CreateOperationContext(r.Context(), params)
+	rc, err := exec.CreateOperationContext(ctx.UserContext(), params)
 	if err != nil {
-		w.WriteHeader(statusFor(err))
-		resp := exec.DispatchError(graphql.WithOperationContext(r.Context(), rc), err)
-		writeJson(w, resp)
+		ctx.Status(statusFor(err))
+		resp := exec.DispatchError(graphql.WithOperationContext(ctx.UserContext(), rc), err)
+		writeJson(ctx.Response().BodyWriter(), resp)
 		return
 	}
-	responses, ctx := exec.DispatchOperation(r.Context(), rc)
-	writeJson(w, responses(ctx))
+	responses, userCtx := exec.DispatchOperation(ctx.UserContext(), rc)
+	writeJson(ctx.Response().BodyWriter(), responses(userCtx))
 }

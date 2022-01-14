@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/gofiber/fiber/v2"
 	"net/http"
 	"time"
 
@@ -89,48 +90,49 @@ func (s *Server) AroundResponses(f graphql.ResponseMiddleware) {
 	s.exec.AroundResponses(f)
 }
 
-func (s *Server) getTransport(r *http.Request) graphql.Transport {
+func (s *Server) getTransport(ctx *fiber.Ctx) graphql.Transport {
 	for _, t := range s.transports {
-		if t.Supports(r) {
+		if t.Supports(ctx) {
 			return t
 		}
 	}
 	return nil
 }
 
-func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *Server) ServeFiber(ctx *fiber.Ctx) error {
 	defer func() {
 		if err := recover(); err != nil {
-			err := s.exec.PresentRecoveredError(r.Context(), err)
+			err := s.exec.PresentRecoveredError(ctx.UserContext(), err)
 			resp := &graphql.Response{Errors: []*gqlerror.Error{err}}
 			b, _ := json.Marshal(resp)
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			w.Write(b)
+			ctx.Status(fiber.StatusUnprocessableEntity)
+			ctx.Write(b)
 		}
 	}()
 
-	r = r.WithContext(graphql.StartOperationTrace(r.Context()))
+	ctx.SetUserContext(graphql.StartOperationTrace(ctx.UserContext()))
 
-	transport := s.getTransport(r)
+	transport := s.getTransport(ctx)
 	if transport == nil {
-		sendErrorf(w, http.StatusBadRequest, "transport not supported")
-		return
+		sendErrorf(ctx, http.StatusBadRequest, "transport not supported")
+		return nil
 	}
 
-	transport.Do(w, r, s.exec)
+	transport.Do(ctx, s.exec)
+	return nil
 }
 
-func sendError(w http.ResponseWriter, code int, errors ...*gqlerror.Error) {
-	w.WriteHeader(code)
+func sendError(ctx *fiber.Ctx, code int, errors ...*gqlerror.Error) {
+	ctx.Status(code)
 	b, err := json.Marshal(&graphql.Response{Errors: errors})
 	if err != nil {
 		panic(err)
 	}
-	w.Write(b)
+	ctx.Write(b)
 }
 
-func sendErrorf(w http.ResponseWriter, code int, format string, args ...interface{}) {
-	sendError(w, code, &gqlerror.Error{Message: fmt.Sprintf(format, args...)})
+func sendErrorf(ctx *fiber.Ctx, code int, format string, args ...interface{}) {
+	sendError(ctx, code, &gqlerror.Error{Message: fmt.Sprintf(format, args...)})
 }
 
 type OperationFunc func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler

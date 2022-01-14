@@ -1,9 +1,8 @@
 package transport
 
 import (
-	"net/http"
-
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/gofiber/fiber/v2"
 )
 
 // Options responds to http OPTIONS and HEAD requests
@@ -11,16 +10,16 @@ type Options struct{}
 
 var _ graphql.Transport = Options{}
 
-func (o Options) Supports(r *http.Request) bool {
-	return r.Method == "HEAD" || r.Method == "OPTIONS"
+func (o Options) Supports(ctx *fiber.Ctx) bool {
+	return ctx.Method() == "HEAD" || ctx.Method() == "OPTIONS"
 }
 
-func (o Options) Do(w http.ResponseWriter, r *http.Request, exec graphql.GraphExecutor) {
-	switch r.Method {
-	case http.MethodOptions:
-		w.Header().Set("Allow", "OPTIONS, GET, POST")
-		w.WriteHeader(http.StatusOK)
-	case http.MethodHead:
-		w.WriteHeader(http.StatusMethodNotAllowed)
+func (o Options) Do(ctx *fiber.Ctx, exec graphql.GraphExecutor) {
+	switch ctx.Method() {
+	case fiber.MethodOptions:
+		ctx.Set("Allow", "OPTIONS, GET, POST")
+		ctx.Status(fiber.StatusOK)
+	case fiber.MethodHead:
+		ctx.Status(fiber.StatusMethodNotAllowed)
 	}
 }

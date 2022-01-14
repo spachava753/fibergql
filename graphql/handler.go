@@ -2,7 +2,7 @@ package graphql
 
 import (
 	"context"
-	"net/http"
+	"github.com/gofiber/fiber/v2"
 	"strconv"
 	"strings"
 
@@ -90,8 +90,8 @@ type (
 
 	// Transport provides support for different wire level encodings of graphql requests, eg Form, Get, Post, Websocket
 	Transport interface {
-		Supports(r *http.Request) bool
-		Do(w http.ResponseWriter, r *http.Request, exec GraphExecutor)
+		Supports(ctx *fiber.Ctx) bool
+		Do(ctx *fiber.Ctx, exec GraphExecutor)
 	}
 )
 
