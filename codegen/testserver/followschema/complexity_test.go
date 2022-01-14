@@ -15,7 +15,7 @@ func TestComplexityCollisions(t *testing.T) {
 
 	srv := handler.NewDefaultServer(NewExecutableSchema(Config{Resolvers: resolvers}))
 
-	c := client.New(srv)
+	c := client.New(srv.ServeFiber)
 
 	resolvers.QueryResolver.Overlapping = func(ctx context.Context) (fields *OverlappingFields, e error) {
 		return &OverlappingFields{
@@ -53,7 +53,7 @@ func TestComplexityFuncs(t *testing.T) {
 
 	srv := handler.NewDefaultServer(NewExecutableSchema(cfg))
 	srv.Use(extension.FixedComplexityLimit(10))
-	c := client.New(srv)
+	c := client.New(srv.ServeFiber)
 
 	resolvers.QueryResolver.Overlapping = func(ctx context.Context) (fields *OverlappingFields, e error) {
 		return &OverlappingFields{

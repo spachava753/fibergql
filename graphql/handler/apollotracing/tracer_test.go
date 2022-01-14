@@ -2,6 +2,8 @@ package apollotracing_test
 
 import (
 	"encoding/json"
+	"github.com/gofiber/fiber/v2"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,7 +16,6 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/lru"
 	"github.com/99designs/gqlgen/graphql/handler/testserver"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vektah/gqlparser/v2/ast"
 	"github.com/vektah/gqlparser/v2/gqlerror"
@@ -34,14 +35,17 @@ func TestApolloTracing(t *testing.T) {
 	h.AddTransport(transport.POST{})
 	h.Use(apollotracing.Tracer{})
 
-	resp := doRequest(h, http.MethodPost, "/graphql", `{"query":"{ name }"}`)
-	assert.Equal(t, http.StatusOK, resp.Code, resp.Body.String())
+	resp := doRequest(h.ServeFiber, http.MethodPost, "/graphql", `{"query":"{ name }"}`)
+	contents, err := io.ReadAll(resp.Body)
+	require.Nil(t, err, "unexpected error reading response body")
+	resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(contents))
 	var respData struct {
 		Extensions struct {
 			Tracing apollotracing.TracingExtension `json:"tracing"`
 		} `json:"extensions"`
 	}
-	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &respData))
+	require.NoError(t, json.Unmarshal(contents, &respData))
 
 	tracing := &respData.Extensions.Tracing
 
@@ -80,23 +84,49 @@ func TestApolloTracing_withFail(t *testing.T) {
 	h.Use(extension.AutomaticPersistedQuery{Cache: lru.New(100)})
 	h.Use(apollotracing.Tracer{})
 
-	resp := doRequest(h, http.MethodPost, "/graphql", `{"operationName":"A","extensions":{"persistedQuery":{"version":1,"sha256Hash":"338bbc16ac780daf81845339fbf0342061c1e9d2b702c96d3958a13a557083a6"}}}`)
-	assert.Equal(t, http.StatusOK, resp.Code, resp.Body.String())
-	b := resp.Body.Bytes()
-	t.Log(string(b))
+	resp := doRequest(h.ServeFiber, http.MethodPost, "/graphql", `{"operationName":"A","extensions":{"persistedQuery":{"version":1,"sha256Hash":"338bbc16ac780daf81845339fbf0342061c1e9d2b702c96d3958a13a557083a6"}}}`)
+	contents, err := io.ReadAll(resp.Body)
+	require.Nil(t, err, "unexpected error reading response body")
+	resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(contents))
+	t.Log(string(contents))
 	var respData struct {
 		Errors gqlerror.List
 	}
-	require.NoError(t, json.Unmarshal(b, &respData))
+	require.NoError(t, json.Unmarshal(contents, &respData))
 	require.Len(t, respData.Errors, 1)
 	require.Equal(t, "PersistedQueryNotFound", respData.Errors[0].Message)
 }
 
-func doRequest(handler http.Handler, method, target, body string) *httptest.ResponseRecorder {
+func doRequest(handler fiber.Handler, method string, target string, body string) *http.Response {
 	r := httptest.NewRequest(method, target, strings.NewReader(body))
 	r.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
 
-	handler.ServeHTTP(w, r)
-	return w
+	app := fiber.New()
+
+	switch method {
+	case fiber.MethodGet:
+		app.Get(target, handler)
+	case fiber.MethodPost:
+		app.Post(target, handler)
+	case fiber.MethodDelete:
+		app.Delete(target, handler)
+	case fiber.MethodPut:
+		app.Put(target, handler)
+	case fiber.MethodPatch:
+		app.Patch(target, handler)
+	case fiber.MethodOptions:
+		app.Options(target, handler)
+	case fiber.MethodHead:
+		app.Head(target, handler)
+	case fiber.MethodConnect:
+		app.Connect(target, handler)
+	case fiber.MethodTrace:
+		app.Trace(target, handler)
+	}
+	resp, err := app.Test(r)
+	if err != nil {
+		panic("unexpected error when running test server")
+	}
+	return resp
 }

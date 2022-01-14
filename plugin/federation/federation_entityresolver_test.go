@@ -20,7 +20,7 @@ func TestEntityResolver(t *testing.T) {
 		generated.NewExecutableSchema(generated.Config{
 			Resolvers: &entityresolver.Resolver{},
 		}),
-	))
+	).ServeFiber)
 
 	t.Run("Hello entities", func(t *testing.T) {
 		representations := []map[string]interface{}{
@@ -318,7 +318,7 @@ func TestMultiEntityResolver(t *testing.T) {
 		generated.NewExecutableSchema(generated.Config{
 			Resolvers: &entityresolver.Resolver{},
 		}),
-	))
+	).ServeFiber)
 
 	t.Run("MultiHello entities", func(t *testing.T) {
 		itemCount := 10

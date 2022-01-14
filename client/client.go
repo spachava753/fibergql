@@ -6,18 +6,20 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/gofiber/fiber/v2"
+	"github.com/mitchellh/mapstructure"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
-
-	"github.com/mitchellh/mapstructure"
+	"strconv"
 )
 
 type (
 	// Client used for testing GraphQL servers. Not for production use.
 	Client struct {
-		h    http.Handler
+		h    fiber.Handler
 		opts []Option
 	}
 
@@ -45,7 +47,7 @@ type (
 
 // New creates a graphql client
 // Options can be set that should be applied to all requests made with this client
-func New(h http.Handler, opts ...Option) *Client {
+func New(h fiber.Handler, opts ...Option) *Client {
 	p := &Client{
 		h:    h,
 		opts: opts,
@@ -87,17 +89,24 @@ func (p *Client) RawPost(query string, options ...Option) (*Response, error) {
 		return nil, fmt.Errorf("build: %w", err)
 	}
 
-	w := httptest.NewRecorder()
-	p.h.ServeHTTP(w, r)
-
-	if w.Code >= http.StatusBadRequest {
-		return nil, fmt.Errorf("http %d: %s", w.Code, w.Body.String())
+	app := fiber.New()
+	app.All("/", p.h)
+	resp, err := app.Test(r)
+	if err != nil {
+		return nil, fmt.Errorf("unxpected error from fiber test server: %w", err)
+	}
+	contents, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("unxpected error from reading fiber test response: %w", err)
+	}
+	if resp.StatusCode >= fiber.StatusBadRequest {
+		return nil, fmt.Errorf("http %d: %s", resp.StatusCode, string(contents))
 	}
 
 	// decode it into map string first, let mapstructure do the final decode
 	// because it can be much stricter about unknown fields.
 	respDataRaw := &Response{}
-	err = json.Unmarshal(w.Body.Bytes(), &respDataRaw)
+	err = json.Unmarshal(contents, &respDataRaw)
 	if err != nil {
 		return nil, fmt.Errorf("decode: %w", err)
 	}
@@ -130,6 +139,7 @@ func (p *Client) newRequest(query string, options ...Option) (*http.Request, err
 		if err != nil {
 			return nil, fmt.Errorf("encode: %w", err)
 		}
+		bd.HTTP.Header.Add("Content-Length", strconv.FormatInt(int64(len(requestBody)), 10))
 		bd.HTTP.Body = ioutil.NopCloser(bytes.NewBuffer(requestBody))
 	default:
 		panic("unsupported encoding " + bd.HTTP.Header.Get("Content-Type"))

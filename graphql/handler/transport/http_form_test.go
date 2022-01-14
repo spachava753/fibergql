@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/gofiber/fiber/v2"
+	"io"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
-	"net/http/httptest"
 	"net/textproto"
 	"testing"
 
@@ -62,10 +63,18 @@ func TestFileUpload(t *testing.T) {
 		}
 		req := createUploadRequest(t, operations, mapData, files)
 
-		resp := httptest.NewRecorder()
-		h.ServeHTTP(resp, req)
-		require.Equal(t, http.StatusOK, resp.Code, resp.Body.String())
-		require.Equal(t, `{"data":{"singleUpload":"test"}}`, resp.Body.String())
+		app := fiber.New()
+		app.All("/", h.ServeFiber)
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("expected no error running test fiber server: %s", err)
+		}
+		contents, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("expected no error reading response body: %s", err)
+		}
+		require.Equal(t, fiber.StatusOK, resp.StatusCode, string(contents))
+		require.Equal(t, `{"data":{"singleUpload":"test"}}`, string(contents))
 	})
 
 	t.Run("valid single file upload with payload", func(t *testing.T) {
@@ -88,10 +97,18 @@ func TestFileUpload(t *testing.T) {
 		}
 		req := createUploadRequest(t, operations, mapData, files)
 
-		resp := httptest.NewRecorder()
-		h.ServeHTTP(resp, req)
-		require.Equal(t, http.StatusOK, resp.Code, resp.Body.String())
-		require.Equal(t, `{"data":{"singleUploadWithPayload":"test"}}`, resp.Body.String())
+		app := fiber.New()
+		app.All("/", h.ServeFiber)
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("expected no error running test fiber server: %s", err)
+		}
+		contents, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("expected no error reading response body: %s", err)
+		}
+		require.Equal(t, fiber.StatusOK, resp.StatusCode, string(contents))
+		require.Equal(t, `{"data":{"singleUploadWithPayload":"test"}}`, string(contents))
 	})
 
 	t.Run("valid file list upload", func(t *testing.T) {
@@ -120,10 +137,18 @@ func TestFileUpload(t *testing.T) {
 		}
 		req := createUploadRequest(t, operations, mapData, files)
 
-		resp := httptest.NewRecorder()
-		h.ServeHTTP(resp, req)
-		require.Equal(t, http.StatusOK, resp.Code, resp.Body.String())
-		require.Equal(t, `{"data":{"multipleUpload":[{"id":1},{"id":2}]}}`, resp.Body.String())
+		app := fiber.New()
+		app.All("/", h.ServeFiber)
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("expected no error running test fiber server: %s", err)
+		}
+		contents, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("expected no error reading response body: %s", err)
+		}
+		require.Equal(t, fiber.StatusOK, resp.StatusCode, string(contents))
+		require.Equal(t, `{"data":{"multipleUpload":[{"id":1},{"id":2}]}}`, string(contents))
 	})
 
 	t.Run("valid file list upload with payload", func(t *testing.T) {
@@ -152,10 +177,18 @@ func TestFileUpload(t *testing.T) {
 		}
 		req := createUploadRequest(t, operations, mapData, files)
 
-		resp := httptest.NewRecorder()
-		h.ServeHTTP(resp, req)
-		require.Equal(t, http.StatusOK, resp.Code)
-		require.Equal(t, `{"data":{"multipleUploadWithPayload":[{"id":1},{"id":2}]}}`, resp.Body.String())
+		app := fiber.New()
+		app.All("/", h.ServeFiber)
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("expected no error running test fiber server: %s", err)
+		}
+		contents, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("expected no error reading response body: %s", err)
+		}
+		require.Equal(t, fiber.StatusOK, resp.StatusCode)
+		require.Equal(t, `{"data":{"multipleUploadWithPayload":[{"id":1},{"id":2}]}}`, string(contents))
 	})
 
 	t.Run("valid file list upload with payload and file reuse", func(t *testing.T) {
@@ -180,10 +213,18 @@ func TestFileUpload(t *testing.T) {
 			}
 			req := createUploadRequest(t, operations, mapData, files)
 
-			resp := httptest.NewRecorder()
-			h.ServeHTTP(resp, req)
-			require.Equal(t, http.StatusOK, resp.Code, resp.Body.String())
-			require.Equal(t, `{"data":{"multipleUploadWithPayload":[{"id":1},{"id":2}]}}`, resp.Body.String())
+			app := fiber.New()
+			app.All("/", h.ServeFiber)
+			resp, err := app.Test(req)
+			if err != nil {
+				t.Fatalf("expected no error running test fiber server: %s", err)
+			}
+			contents, err := io.ReadAll(resp.Body)
+			if err != nil {
+				t.Fatalf("expected no error reading response body: %s", err)
+			}
+			require.Equal(t, fiber.StatusOK, resp.StatusCode, string(contents))
+			require.Equal(t, `{"data":{"multipleUploadWithPayload":[{"id":1},{"id":2}]}}`, string(contents))
 		}
 
 		t.Run("payload smaller than UploadMaxMemory, stored in memory", func(t *testing.T) {
@@ -212,60 +253,108 @@ func TestFileUpload(t *testing.T) {
 			Header: http.Header{"Content-Type": {`multipart/form-data; boundary="foo123"`}},
 			Body:   ioutil.NopCloser(new(bytes.Buffer)),
 		}
-		resp := httptest.NewRecorder()
-		h.ServeHTTP(resp, req)
-		require.Equal(t, http.StatusUnprocessableEntity, resp.Code, resp.Body.String())
-		require.Equal(t, `{"errors":[{"message":"failed to parse multipart form"}],"data":null}`, resp.Body.String())
+		app := fiber.New()
+		app.All("/", h.ServeFiber)
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("expected no error running test fiber server: %s", err)
+		}
+		contents, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("expected no error reading response body: %s", err)
+		}
+		require.Equal(t, fiber.StatusUnprocessableEntity, resp.StatusCode, string(contents))
+		require.Equal(t, `{"errors":[{"message":"failed to parse multipart form"}],"data":null}`, string(contents))
 	})
 
 	t.Run("fail parse operation", func(t *testing.T) {
 		operations := `invalid operation`
 		req := createUploadRequest(t, operations, validMap, validFiles)
 
-		resp := httptest.NewRecorder()
-		h.ServeHTTP(resp, req)
-		require.Equal(t, http.StatusUnprocessableEntity, resp.Code, resp.Body.String())
-		require.Equal(t, `{"errors":[{"message":"operations form field could not be decoded"}],"data":null}`, resp.Body.String())
+		app := fiber.New()
+		app.All("/", h.ServeFiber)
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("expected no error running test fiber server: %s", err)
+		}
+		contents, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("expected no error reading response body: %s", err)
+		}
+		require.Equal(t, fiber.StatusUnprocessableEntity, resp.StatusCode, string(contents))
+		require.Equal(t, `{"errors":[{"message":"operations form field could not be decoded"}],"data":null}`, string(contents))
 	})
 
 	t.Run("fail parse map", func(t *testing.T) {
 		mapData := `invalid map`
 		req := createUploadRequest(t, validOperations, mapData, validFiles)
 
-		resp := httptest.NewRecorder()
-		h.ServeHTTP(resp, req)
-		require.Equal(t, http.StatusUnprocessableEntity, resp.Code, resp.Body.String())
-		require.Equal(t, `{"errors":[{"message":"map form field could not be decoded"}],"data":null}`, resp.Body.String())
+		app := fiber.New()
+		app.All("/", h.ServeFiber)
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("expected no error running test fiber server: %s", err)
+		}
+		contents, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("expected no error reading response body: %s", err)
+		}
+		require.Equal(t, fiber.StatusUnprocessableEntity, resp.StatusCode, string(contents))
+		require.Equal(t, `{"errors":[{"message":"map form field could not be decoded"}],"data":null}`, string(contents))
 	})
 
 	t.Run("fail missing file", func(t *testing.T) {
 		var files []file
 		req := createUploadRequest(t, validOperations, validMap, files)
 
-		resp := httptest.NewRecorder()
-		h.ServeHTTP(resp, req)
-		require.Equal(t, http.StatusUnprocessableEntity, resp.Code, resp.Body.String())
-		require.Equal(t, `{"errors":[{"message":"failed to get key 0 from form"}],"data":null}`, resp.Body.String())
+		app := fiber.New()
+		app.All("/", h.ServeFiber)
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("expected no error running test fiber server: %s", err)
+		}
+		contents, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("expected no error reading response body: %s", err)
+		}
+		require.Equal(t, fiber.StatusUnprocessableEntity, resp.StatusCode, string(contents))
+		require.Equal(t, `{"errors":[{"message":"failed to get key 0 from form"}],"data":null}`, string(contents))
 	})
 
 	t.Run("fail map entry with invalid operations paths prefix", func(t *testing.T) {
 		mapData := `{ "0": ["var.file"] }`
 		req := createUploadRequest(t, validOperations, mapData, validFiles)
 
-		resp := httptest.NewRecorder()
-		h.ServeHTTP(resp, req)
-		require.Equal(t, http.StatusUnprocessableEntity, resp.Code, resp.Body.String())
-		require.Equal(t, `{"errors":[{"message":"invalid operations paths for key 0"}],"data":null}`, resp.Body.String())
+		app := fiber.New()
+		app.All("/", h.ServeFiber)
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("expected no error running test fiber server: %s", err)
+		}
+		contents, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("expected no error reading response body: %s", err)
+		}
+		require.Equal(t, fiber.StatusUnprocessableEntity, resp.StatusCode, string(contents))
+		require.Equal(t, `{"errors":[{"message":"invalid operations paths for key 0"}],"data":null}`, string(contents))
 	})
 
 	t.Run("fail parse request big body", func(t *testing.T) {
 		multipartForm.MaxUploadSize = 2
 		req := createUploadRequest(t, validOperations, validMap, validFiles)
 
-		resp := httptest.NewRecorder()
-		h.ServeHTTP(resp, req)
-		require.Equal(t, http.StatusOK, resp.Code, resp.Body.String())
-		require.Equal(t, `{"errors":[{"message":"failed to parse multipart form, request body too large"}],"data":null}`, resp.Body.String())
+		app := fiber.New()
+		app.All("/", h.ServeFiber)
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("expected no error running test fiber server: %s", err)
+		}
+		contents, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("expected no error reading response body: %s", err)
+		}
+		require.Equal(t, fiber.StatusOK, resp.StatusCode, string(contents))
+		require.Equal(t, `{"errors":[{"message":"failed to parse multipart form, request body too large"}],"data":null}`, string(contents))
 	})
 }
 

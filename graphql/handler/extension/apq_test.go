@@ -2,6 +2,7 @@ package extension_test
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"testing"
 
@@ -23,9 +24,12 @@ func TestAPQIntegration(t *testing.T) {
 		return next(ctx)
 	})
 
-	resp := doRequest(h, "POST", "/graphql", `{"query":"{ name }","extensions":{"persistedQuery":{"version":1,"sha256Hash":"30166fc3298853f22709fce1e4a00e98f1b6a3160eaaaf9cb3b7db6a16073b07"}}}`)
-	require.Equal(t, http.StatusOK, resp.Code, resp.Body.String())
-	require.Equal(t, `{"data":{"name":"test"}}`, resp.Body.String())
+	resp := doRequest(h.ServeFiber, "POST", "/graphql", `{"query":"{ name }","extensions":{"persistedQuery":{"version":1,"sha256Hash":"30166fc3298853f22709fce1e4a00e98f1b6a3160eaaaf9cb3b7db6a16073b07"}}}`)
+	contents, err := io.ReadAll(resp.Body)
+	require.Nil(t, err, "unexpected error reading response body")
+	resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(contents))
+	require.Equal(t, `{"data":{"name":"test"}}`, string(contents))
 
 	require.NotNil(t, stats)
 	require.True(t, stats.SentQuery)
