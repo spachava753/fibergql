@@ -90,7 +90,7 @@ func (p *Client) RawPost(query string, options ...Option) (*Response, error) {
 	}
 
 	app := fiber.New()
-	app.All("/", p.h)
+	app.Post("/", p.h)
 	resp, err := app.Test(r)
 	if err != nil {
 		return nil, fmt.Errorf("unxpected error from fiber test server: %w", err)

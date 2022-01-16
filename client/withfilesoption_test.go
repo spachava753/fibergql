@@ -1,11 +1,12 @@
 package client_test
 
 import (
+	"bytes"
+	"github.com/gofiber/fiber/v2"
 	"io"
 	"io/ioutil"
 	"mime"
 	"mime/multipart"
-	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -27,12 +28,12 @@ func TestWithFiles(t *testing.T) {
 	tempFile3.WriteString(`La-Li-Lu-Le-Lo`)
 
 	t.Run("with one file", func(t *testing.T) {
-		h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		h := func(ctx *fiber.Ctx) error {
+			mediaType, params, err := mime.ParseMediaType(ctx.Get("Content-Type"))
 			require.NoError(t, err)
 			require.True(t, strings.HasPrefix(mediaType, "multipart/"))
 
-			mr := multipart.NewReader(r.Body, params["boundary"])
+			mr := multipart.NewReader(bytes.NewReader(ctx.Body()), params["boundary"])
 			for {
 				p, err := mr.NextPart()
 				if err == io.EOF {
@@ -56,8 +57,9 @@ func TestWithFiles(t *testing.T) {
 					require.EqualValues(t, `The quick brown fox jumps over the lazy dog`, slurp)
 				}
 			}
-			w.Write([]byte(`{}`))
-		})
+			ctx.Write([]byte(`{}`))
+			return nil
+		}
 
 		c := client.New(h)
 
@@ -69,12 +71,12 @@ func TestWithFiles(t *testing.T) {
 	})
 
 	t.Run("with multiple files", func(t *testing.T) {
-		h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		h := func(ctx *fiber.Ctx) error {
+			mediaType, params, err := mime.ParseMediaType(ctx.Get("Content-Type"))
 			require.NoError(t, err)
 			require.True(t, strings.HasPrefix(mediaType, "multipart/"))
 
-			mr := multipart.NewReader(r.Body, params["boundary"])
+			mr := multipart.NewReader(bytes.NewReader(ctx.Body()), params["boundary"])
 			for {
 				p, err := mr.NextPart()
 				if err == io.EOF {
@@ -107,8 +109,9 @@ func TestWithFiles(t *testing.T) {
 					}, string(slurp))
 				}
 			}
-			w.Write([]byte(`{}`))
-		})
+			ctx.Write([]byte(`{}`))
+			return nil
+		}
 
 		c := client.New(h)
 
@@ -122,12 +125,12 @@ func TestWithFiles(t *testing.T) {
 	})
 
 	t.Run("with multiple files across multiple variables", func(t *testing.T) {
-		h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		h := func(ctx *fiber.Ctx) error {
+			mediaType, params, err := mime.ParseMediaType(ctx.Get("Content-Type"))
 			require.NoError(t, err)
 			require.True(t, strings.HasPrefix(mediaType, "multipart/"))
 
-			mr := multipart.NewReader(r.Body, params["boundary"])
+			mr := multipart.NewReader(bytes.NewReader(ctx.Body()), params["boundary"])
 			for {
 				p, err := mr.NextPart()
 				if err == io.EOF {
@@ -163,8 +166,9 @@ func TestWithFiles(t *testing.T) {
 					}, string(slurp))
 				}
 			}
-			w.Write([]byte(`{}`))
-		})
+			ctx.Write([]byte(`{}`))
+			return nil
+		}
 
 		c := client.New(h)
 
@@ -181,12 +185,12 @@ func TestWithFiles(t *testing.T) {
 	})
 
 	t.Run("with multiple files and file reuse", func(t *testing.T) {
-		h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		h := func(ctx *fiber.Ctx) error {
+			mediaType, params, err := mime.ParseMediaType(ctx.Get("Content-Type"))
 			require.NoError(t, err)
 			require.True(t, strings.HasPrefix(mediaType, "multipart/"))
 
-			mr := multipart.NewReader(r.Body, params["boundary"])
+			mr := multipart.NewReader(bytes.NewReader(ctx.Body()), params["boundary"])
 			for {
 				p, err := mr.NextPart()
 				if err == io.EOF {
@@ -223,8 +227,9 @@ func TestWithFiles(t *testing.T) {
 				}
 				require.False(t, regexp.MustCompile(`form-data; name="2"; filename=.*`).MatchString(contentDisposition))
 			}
-			w.Write([]byte(`{}`))
-		})
+			ctx.Write([]byte(`{}`))
+			return nil
+		}
 
 		c := client.New(h)
 

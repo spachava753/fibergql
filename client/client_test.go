@@ -2,11 +2,15 @@ package client_test
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
+	"github.com/gofiber/fiber/v2"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/99designs/gqlgen/client"
@@ -14,22 +18,19 @@ import (
 )
 
 func TestClient(t *testing.T) {
-	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		b, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			panic(err)
-		}
-		require.Equal(t, `{"query":"user(id:$id){name}","variables":{"id":1}}`, string(b))
+	h := func(ctx *fiber.Ctx) error {
+		require.Equal(t, `{"query":"user(id:$id){name}","variables":{"id":1}}`, string(ctx.Body()))
 
-		err = json.NewEncoder(w).Encode(map[string]interface{}{
+		err := json.NewEncoder(ctx.Response().BodyWriter()).Encode(map[string]interface{}{
 			"data": map[string]interface{}{
 				"name": "bob",
 			},
 		})
 		if err != nil {
-			panic(err)
+			return err
 		}
-	})
+		return nil
+	}
 
 	c := client.New(h)
 
@@ -43,9 +44,8 @@ func TestClient(t *testing.T) {
 }
 
 func TestClientMultipartFormData(t *testing.T) {
-	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		bodyBytes, err := ioutil.ReadAll(r.Body)
-		require.NoError(t, err)
+	h := func(ctx *fiber.Ctx) error {
+		bodyBytes := ctx.Request().Body()
 		require.Contains(t, string(bodyBytes), `Content-Disposition: form-data; name="operations"`)
 		require.Contains(t, string(bodyBytes), `{"query":"mutation ($input: Input!) {}","variables":{"file":{}}`)
 		require.Contains(t, string(bodyBytes), `Content-Disposition: form-data; name="map"`)
@@ -54,8 +54,9 @@ func TestClientMultipartFormData(t *testing.T) {
 		require.Contains(t, string(bodyBytes), `Content-Type: text/plain`)
 		require.Contains(t, string(bodyBytes), `Hello World`)
 
-		w.Write([]byte(`{}`))
-	})
+		ctx.Write([]byte(`{}`))
+		return nil
+	}
 
 	c := client.New(h)
 
@@ -76,16 +77,18 @@ func TestClientMultipartFormData(t *testing.T) {
 
 			bd.HTTP.Body = ioutil.NopCloser(bodyBuf)
 			bd.HTTP.Header.Set("Content-Type", bodyWriter.FormDataContentType())
+			bd.HTTP.Header.Set("Content-Length", strconv.FormatInt(int64(bodyBuf.Len()), 10))
 		},
 	)
 }
 
 func TestAddHeader(t *testing.T) {
-	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "ASDF", r.Header.Get("Test-Key"))
+	h := func(ctx *fiber.Ctx) error {
+		require.Equal(t, "ASDF", ctx.GetReqHeaders()["Test-Key"])
 
-		w.Write([]byte(`{}`))
-	})
+		ctx.Write([]byte(`{}`))
+		return nil
+	}
 
 	c := client.New(h)
 
@@ -96,11 +99,12 @@ func TestAddHeader(t *testing.T) {
 }
 
 func TestAddClientHeader(t *testing.T) {
-	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "ASDF", r.Header.Get("Test-Key"))
+	h := func(ctx *fiber.Ctx) error {
+		require.Equal(t, "ASDF", ctx.GetReqHeaders()["Test-Key"])
 
-		w.Write([]byte(`{}`))
-	})
+		ctx.Write([]byte(`{}`))
+		return nil
+	}
 
 	c := client.New(h, client.AddHeader("Test-Key", "ASDF"))
 
@@ -108,15 +112,57 @@ func TestAddClientHeader(t *testing.T) {
 	c.MustPost("{ id }", &resp)
 }
 
+// copied from standard library: https://cs.opensource.google/go/go/+/refs/tags/go1.17.6:src/net/http/internal/ascii/print.go;l=14
+func lower(b byte) byte {
+	if 'A' <= b && b <= 'Z' {
+		return b + ('a' - 'A')
+	}
+	return b
+}
+
+// copied from standard library: https://cs.opensource.google/go/go/+/refs/tags/go1.17.6:src/net/http/internal/ascii/print.go;l=14
+func equalFold(s, t string) bool {
+	if len(s) != len(t) {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if lower(s[i]) != lower(t[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+// copied from standard library: https://cs.opensource.google/go/go/+/refs/tags/go1.17.6:src/net/http/request.go;l=939
+func parseBasicAuth(auth string) (username, password string, ok bool) {
+	const prefix = "Basic "
+	// Case insensitive prefix match. See Issue 22736.
+	if len(auth) < len(prefix) || !equalFold(auth[:len(prefix)], prefix) {
+		return
+	}
+	c, err := base64.StdEncoding.DecodeString(auth[len(prefix):])
+	if err != nil {
+		return
+	}
+	cs := string(c)
+	s := strings.IndexByte(cs, ':')
+	if s < 0 {
+		return
+	}
+	return cs[:s], cs[s+1:], true
+}
+
 func TestBasicAuth(t *testing.T) {
-	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user, pass, ok := r.BasicAuth()
+	h := func(ctx *fiber.Ctx) error {
+		auth := ctx.Get(fiber.HeaderAuthorization)
+		user, pass, ok := parseBasicAuth(auth)
 		require.True(t, ok)
 		require.Equal(t, "user", user)
 		require.Equal(t, "pass", pass)
 
-		w.Write([]byte(`{}`))
-	})
+		ctx.Write([]byte(`{}`))
+		return nil
+	}
 
 	c := client.New(h)
 
@@ -127,13 +173,12 @@ func TestBasicAuth(t *testing.T) {
 }
 
 func TestAddCookie(t *testing.T) {
-	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c, err := r.Cookie("foo")
-		require.NoError(t, err)
-		require.Equal(t, "value", c.Value)
-
-		w.Write([]byte(`{}`))
-	})
+	h := func(ctx *fiber.Ctx) error {
+		c := ctx.Cookies("foo")
+		require.Equal(t, "value", c)
+		ctx.Write([]byte(`{}`))
+		return nil
+	}
 
 	c := client.New(h)
 
@@ -144,21 +189,19 @@ func TestAddCookie(t *testing.T) {
 }
 
 func TestAddExtensions(t *testing.T) {
-	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		b, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			panic(err)
-		}
+	h := func(ctx *fiber.Ctx) error {
+		b := ctx.Body()
 		require.Equal(t, `{"query":"user(id:1){name}","extensions":{"persistedQuery":{"sha256Hash":"ceec2897e2da519612279e63f24658c3e91194cbb2974744fa9007a7e1e9f9e7","version":1}}}`, string(b))
-		err = json.NewEncoder(w).Encode(map[string]interface{}{
+		err := json.NewEncoder(ctx.Response().BodyWriter()).Encode(map[string]interface{}{
 			"data": map[string]interface{}{
 				"Name": "Bob",
 			},
 		})
 		if err != nil {
-			panic(err)
+			return err
 		}
-	})
+		return nil
+	}
 
 	c := client.New(h)
 
