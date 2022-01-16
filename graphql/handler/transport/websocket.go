@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/99designs/gqlgen/graphql"
-	"github.com/99designs/gqlgen/graphql/errcode"
 	"github.com/gofiber/websocket/v2"
+	"github.com/spachava753/fibergql/graphql"
+	"github.com/spachava753/fibergql/graphql/errcode"
 )
 
 type (

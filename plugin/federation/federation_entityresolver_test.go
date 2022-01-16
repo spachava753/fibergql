@@ -7,12 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/99designs/gqlgen/client"
-	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/spachava753/fibergql/client"
+	"github.com/spachava753/fibergql/graphql/handler"
 	"github.com/stretchr/testify/require"
 
-	"github.com/99designs/gqlgen/plugin/federation/testdata/entityresolver"
-	"github.com/99designs/gqlgen/plugin/federation/testdata/entityresolver/generated"
+	"github.com/spachava753/fibergql/plugin/federation/testdata/entityresolver"
+	"github.com/spachava753/fibergql/plugin/federation/testdata/entityresolver/generated"
 )
 
 func TestEntityResolver(t *testing.T) {

@@ -1,4 +1,4 @@
-module github.com/99designs/gqlgen
+module github.com/spachava753/fibergql
 
 go 1.16
 

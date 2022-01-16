@@ -1,6 +1,6 @@
 package followschema
 
-import "github.com/99designs/gqlgen/codegen/testserver/followschema/otherpkg"
+import "github.com/spachava753/fibergql/codegen/testserver/followschema/otherpkg"
 
 type (
 	WrappedScalar = otherpkg.Scalar

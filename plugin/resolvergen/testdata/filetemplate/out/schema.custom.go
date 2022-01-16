@@ -6,7 +6,7 @@ package customresolver
 import (
 	"context"
 
-	customresolver "github.com/99designs/gqlgen/plugin/resolvergen/testdata/singlefile/out"
+	customresolver "github.com/spachava753/fibergql/plugin/resolvergen/testdata/singlefile/out"
 )
 
 func (r *queryCustomResolverType) Resolver(ctx context.Context) (*customresolver.Resolver, error) {

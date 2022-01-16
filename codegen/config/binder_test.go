@@ -4,7 +4,7 @@ import (
 	"go/types"
 	"testing"
 
-	"github.com/99designs/gqlgen/internal/code"
+	"github.com/spachava753/fibergql/internal/code"
 
 	"github.com/stretchr/testify/require"
 	"github.com/vektah/gqlparser/v2"
@@ -28,7 +28,7 @@ func TestSlicePointerBinding(t *testing.T) {
 			panic(err)
 		}
 
-		require.Equal(t, ta.GO.String(), "[]*github.com/99designs/gqlgen/codegen/config/testdata/autobinding/chat.Message")
+		require.Equal(t, ta.GO.String(), "[]*github.com/spachava753/fibergql/codegen/config/testdata/autobinding/chat.Message")
 	})
 
 	t.Run("with OmitSliceElementPointers", func(t *testing.T) {
@@ -41,14 +41,14 @@ func TestSlicePointerBinding(t *testing.T) {
 			panic(err)
 		}
 
-		require.Equal(t, ta.GO.String(), "[]github.com/99designs/gqlgen/codegen/config/testdata/autobinding/chat.Message")
+		require.Equal(t, ta.GO.String(), "[]github.com/spachava753/fibergql/codegen/config/testdata/autobinding/chat.Message")
 	})
 }
 
 func createBinder(cfg Config) (*Binder, *ast.Schema) {
 	cfg.Models = TypeMap{
 		"Message": TypeMapEntry{
-			Model: []string{"github.com/99designs/gqlgen/codegen/config/testdata/autobinding/chat.Message"},
+			Model: []string{"github.com/spachava753/fibergql/codegen/config/testdata/autobinding/chat.Message"},
 		},
 	}
 	cfg.Packages = &code.Packages{}

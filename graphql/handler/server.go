@@ -8,11 +8,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/99designs/gqlgen/graphql"
-	"github.com/99designs/gqlgen/graphql/executor"
-	"github.com/99designs/gqlgen/graphql/handler/extension"
-	"github.com/99designs/gqlgen/graphql/handler/lru"
-	"github.com/99designs/gqlgen/graphql/handler/transport"
+	"github.com/spachava753/fibergql/graphql"
+	"github.com/spachava753/fibergql/graphql/executor"
+	"github.com/spachava753/fibergql/graphql/handler/extension"
+	"github.com/spachava753/fibergql/graphql/handler/lru"
+	"github.com/spachava753/fibergql/graphql/handler/transport"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 

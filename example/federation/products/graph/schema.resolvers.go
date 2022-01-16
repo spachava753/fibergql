@@ -6,8 +6,8 @@ package graph
 import (
 	"context"
 
-	"github.com/99designs/gqlgen/example/federation/products/graph/generated"
-	"github.com/99designs/gqlgen/example/federation/products/graph/model"
+	"github.com/spachava753/fibergql/example/federation/products/graph/generated"
+	"github.com/spachava753/fibergql/example/federation/products/graph/model"
 )
 
 func (r *queryResolver) TopProducts(ctx context.Context, first *int) ([]*model.Product, error) {

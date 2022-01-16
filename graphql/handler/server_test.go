@@ -10,9 +10,9 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/99designs/gqlgen/graphql"
-	"github.com/99designs/gqlgen/graphql/handler/testserver"
-	"github.com/99designs/gqlgen/graphql/handler/transport"
+	"github.com/spachava753/fibergql/graphql"
+	"github.com/spachava753/fibergql/graphql/handler/testserver"
+	"github.com/spachava753/fibergql/graphql/handler/transport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vektah/gqlparser/v2/ast"

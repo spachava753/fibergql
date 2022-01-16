@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/99designs/gqlgen/example/federation/products/graph"
-	"github.com/99designs/gqlgen/example/federation/products/graph/generated"
-	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/99designs/gqlgen/graphql/handler/debug"
-	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/spachava753/fibergql/example/federation/products/graph"
+	"github.com/spachava753/fibergql/example/federation/products/graph/generated"
+	"github.com/spachava753/fibergql/graphql/handler"
+	"github.com/spachava753/fibergql/graphql/handler/debug"
+	"github.com/spachava753/fibergql/graphql/playground"
 )
 
 const defaultPort = "4002"

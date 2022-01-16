@@ -3,8 +3,8 @@ package transport
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/99designs/gqlgen/graphql"
 	"github.com/gofiber/fiber/v2"
+	"github.com/spachava753/fibergql/graphql"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 

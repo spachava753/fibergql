@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"runtime/debug"
 
-	"github.com/99designs/gqlgen/example/todo"
-	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/spachava753/fibergql/example/todo"
+	"github.com/spachava753/fibergql/graphql/handler"
+	"github.com/spachava753/fibergql/graphql/playground"
 )
 
 func main() {

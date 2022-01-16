@@ -3,7 +3,7 @@ package codegen
 import (
 	"testing"
 
-	"github.com/99designs/gqlgen/codegen/config"
+	"github.com/spachava753/fibergql/codegen/config"
 	"github.com/vektah/gqlparser/v2/ast"
 
 	"github.com/stretchr/testify/assert"

@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/99designs/gqlgen/complexity"
-	"github.com/99designs/gqlgen/graphql"
-	"github.com/99designs/gqlgen/graphql/errcode"
+	"github.com/spachava753/fibergql/complexity"
+	"github.com/spachava753/fibergql/graphql"
+	"github.com/spachava753/fibergql/graphql/errcode"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 

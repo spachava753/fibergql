@@ -8,10 +8,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/99designs/gqlgen/api"
-	"github.com/99designs/gqlgen/codegen/config"
-	"github.com/99designs/gqlgen/graphql"
-	"github.com/99designs/gqlgen/plugin/stubgen"
+	"github.com/spachava753/fibergql/api"
+	"github.com/spachava753/fibergql/codegen/config"
+	"github.com/spachava753/fibergql/graphql"
+	"github.com/spachava753/fibergql/plugin/stubgen"
 )
 
 func main() {

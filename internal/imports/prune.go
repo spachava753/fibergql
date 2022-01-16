@@ -10,7 +10,7 @@ import (
 	"go/token"
 	"strings"
 
-	"github.com/99designs/gqlgen/internal/code"
+	"github.com/spachava753/fibergql/internal/code"
 
 	"golang.org/x/tools/go/ast/astutil"
 	"golang.org/x/tools/imports"

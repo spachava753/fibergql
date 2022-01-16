@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/99designs/gqlgen/plugin/federation/testdata/entityresolver/generated"
+	"github.com/spachava753/fibergql/plugin/federation/testdata/entityresolver/generated"
 )
 
 func (r *entityResolver) FindHelloByName(ctx context.Context, name string) (*generated.Hello, error) {

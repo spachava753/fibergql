@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/99designs/gqlgen/codegen"
-	"github.com/99designs/gqlgen/codegen/config"
-	"github.com/99designs/gqlgen/codegen/templates"
-	"github.com/99designs/gqlgen/internal/rewrite"
-	"github.com/99designs/gqlgen/plugin"
+	"github.com/spachava753/fibergql/codegen"
+	"github.com/spachava753/fibergql/codegen/config"
+	"github.com/spachava753/fibergql/codegen/templates"
+	"github.com/spachava753/fibergql/internal/rewrite"
+	"github.com/spachava753/fibergql/plugin"
 )
 
 func New() plugin.Plugin {

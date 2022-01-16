@@ -9,11 +9,11 @@ import (
 	"os"
 	"testing"
 
-	gqlclient "github.com/99designs/gqlgen/client"
-	"github.com/99designs/gqlgen/example/fileupload/model"
-	"github.com/99designs/gqlgen/graphql"
-	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/99designs/gqlgen/graphql/handler/transport"
+	gqlclient "github.com/spachava753/fibergql/client"
+	"github.com/spachava753/fibergql/example/fileupload/model"
+	"github.com/spachava753/fibergql/graphql"
+	"github.com/spachava753/fibergql/graphql/handler"
+	"github.com/spachava753/fibergql/graphql/handler/transport"
 	"github.com/stretchr/testify/require"
 )
 

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/99designs/gqlgen/graphql"
+	"github.com/spachava753/fibergql/graphql"
 	"github.com/mitchellh/mapstructure"
 )
 

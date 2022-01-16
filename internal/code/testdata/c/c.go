@@ -1,7 +1,7 @@
 package c
 
 import (
-	"github.com/99designs/gqlgen/internal/code/testdata/b"
+	"github.com/spachava753/fibergql/internal/code/testdata/b"
 )
 
 var C = b.B + " C"

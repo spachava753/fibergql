@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"syscall"
 
-	"github.com/99designs/gqlgen/codegen"
-	"github.com/99designs/gqlgen/codegen/config"
-	"github.com/99designs/gqlgen/plugin"
-	"github.com/99designs/gqlgen/plugin/federation"
-	"github.com/99designs/gqlgen/plugin/modelgen"
-	"github.com/99designs/gqlgen/plugin/resolvergen"
+	"github.com/spachava753/fibergql/codegen"
+	"github.com/spachava753/fibergql/codegen/config"
+	"github.com/spachava753/fibergql/plugin"
+	"github.com/spachava753/fibergql/plugin/federation"
+	"github.com/spachava753/fibergql/plugin/modelgen"
+	"github.com/spachava753/fibergql/plugin/resolvergen"
 )
 
 func Generate(cfg *config.Config, option ...Option) error {

@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/spachava753/fibergql/graphql/playground"
 
-	extension "github.com/99designs/gqlgen/example/type-system-extension"
-	"github.com/99designs/gqlgen/graphql/handler"
+	extension "github.com/spachava753/fibergql/example/type-system-extension"
+	"github.com/spachava753/fibergql/graphql/handler"
 )
 
 const defaultPort = "8080"

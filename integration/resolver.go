@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	models "github.com/99designs/gqlgen/integration/models-go"
-	"github.com/99designs/gqlgen/integration/remote_api"
+	models "github.com/spachava753/fibergql/integration/models-go"
+	"github.com/spachava753/fibergql/integration/remote_api"
 )
 
 type CustomError struct {

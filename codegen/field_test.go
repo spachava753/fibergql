@@ -8,7 +8,7 @@ import (
 	"go/types"
 	"testing"
 
-	"github.com/99designs/gqlgen/codegen/config"
+	"github.com/spachava753/fibergql/codegen/config"
 	"github.com/stretchr/testify/require"
 )
 

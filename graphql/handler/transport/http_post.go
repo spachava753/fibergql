@@ -2,8 +2,8 @@ package transport
 
 import (
 	"bytes"
-	"github.com/99designs/gqlgen/graphql"
 	"github.com/gofiber/fiber/v2"
+	"github.com/spachava753/fibergql/graphql"
 	"mime"
 )
 

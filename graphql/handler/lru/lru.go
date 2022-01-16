@@ -3,8 +3,8 @@ package lru
 import (
 	"context"
 
-	"github.com/99designs/gqlgen/graphql"
 	lru "github.com/hashicorp/golang-lru"
+	"github.com/spachava753/fibergql/graphql"
 )
 
 type LRU struct {

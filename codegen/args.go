@@ -5,8 +5,8 @@ import (
 	"go/types"
 	"strings"
 
-	"github.com/99designs/gqlgen/codegen/config"
-	"github.com/99designs/gqlgen/codegen/templates"
+	"github.com/spachava753/fibergql/codegen/config"
+	"github.com/spachava753/fibergql/codegen/templates"
 	"github.com/vektah/gqlparser/v2/ast"
 )
 

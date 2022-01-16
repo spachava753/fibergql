@@ -1,8 +1,8 @@
 package api
 
 import (
-	"github.com/99designs/gqlgen/codegen/config"
-	"github.com/99designs/gqlgen/plugin"
+	"github.com/spachava753/fibergql/codegen/config"
+	"github.com/spachava753/fibergql/plugin"
 )
 
 type Option func(cfg *config.Config, plugins *[]plugin.Plugin)
